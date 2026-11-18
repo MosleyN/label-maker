@@ -1,0 +1,23 @@
+{
+ "name": "Label Studio",
+ "short_name": "Labels",
+ "description": "Turn shipping-label PDFs into ZPL for Zebra printers",
+ "start_url": "./",
+ "scope": "./",
+ "display": "standalone",
+ "background_color": "#f3f3ef",
+ "theme_color": "#f3f3ef",
+ "icons": [
+  {
+   "src": "icon-180.png",
+   "sizes": "180x180",
+   "type": "image/png"
+  },
+  {
+   "src": "icon-512.png",
+   "sizes": "512x512",
+   "type": "image/png",
+   "purpose": "any"
+  }
+ ]
+}

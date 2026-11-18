@@ -1,0 +1,782 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Label Studio</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Label Studio">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#f3f3ef">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="manifest" href="manifest.webmanifest">
+<style>
+  :root {
+    --bg:#f3f3ef; --card:#ffffff; --ink:#151515; --muted:#6c6c66; --line:#e3e3dc; --chip:#ecece6;
+    --accent:#151515; --accent-ink:#ffffff; --ok:#1f7a3f; --warn:#9a6700; --err:#b42318; --sheet:rgba(0,0,0,.38);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#111111; --card:#1b1b1b; --ink:#f1f1ee; --muted:#9b9b95; --line:#2b2b29; --chip:#262624;
+            --accent:#f1f1ee; --accent-ink:#111111; --ok:#5cc983; --warn:#e3b341; --err:#ff7b72; --sheet:rgba(0,0,0,.6); }
+  }
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html,body { margin:0; background:var(--bg); color:var(--ink);
+    font:16px/1.4 -apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",Arial,sans-serif; -webkit-text-size-adjust:100%; }
+  main { max-width:620px; margin:0 auto; padding:calc(18px + env(safe-area-inset-top)) 14px 120px; }
+  header { display:flex; align-items:center; justify-content:space-between; gap:12px; margin:4px 2px 14px; }
+  h1 { font-size:24px; margin:0; letter-spacing:-.01em; }
+  .sub { color:var(--muted); font-size:13px; margin-top:2px; }
+  .iconbtn { width:42px; height:42px; border-radius:12px; border:1px solid var(--line); background:var(--card); color:var(--ink);
+    display:grid; place-items:center; cursor:pointer; flex:none; padding:0; }
+  .iconbtn svg { width:22px; height:22px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:16px; padding:14px; margin-bottom:12px; }
+  .drop { display:flex; align-items:center; gap:14px; border:2px dashed var(--line); border-radius:14px; padding:16px; cursor:pointer; }
+  .drop.over { border-color:var(--ok); }
+  .drop .plus { width:44px; height:44px; border-radius:12px; background:var(--accent); color:var(--accent-ink); display:grid; place-items:center; flex:none; font-size:28px; line-height:1; }
+  .drop strong { display:block; font-size:16px; }
+  .drop span { color:var(--muted); font-size:13px; }
+  input[type=file] { display:none; }
+
+  .listhead { display:flex; justify-content:space-between; align-items:center; margin:18px 4px 8px; }
+  .listhead h2 { font-size:15px; margin:0; color:var(--muted); font-weight:600; text-transform:uppercase; letter-spacing:.04em; }
+  .linkbtn { background:none; border:0; color:var(--muted); font:inherit; font-size:14px; cursor:pointer; padding:4px; }
+  .empty { text-align:center; color:var(--muted); font-size:14px; padding:26px 10px; }
+
+  .item { display:grid; grid-template-columns:62px minmax(0,1fr) auto; column-gap:12px; row-gap:2px; background:var(--card); border:1px solid var(--line); border-radius:14px; padding:10px; margin-bottom:8px; align-items:center; }
+  .item .thumb { grid-row:1 / span 2; }
+  .item .trk { grid-column:2 / span 2; align-self:start; font-size:14px; letter-spacing:.01em; }
+  .item.off { opacity:.45; }
+  .thumb { width:62px; height:93px; border-radius:6px; border:1px solid var(--line); background:#fff; flex:none; object-fit:contain; cursor:zoom-in; }
+  .thumb.ph { display:grid; place-items:center; color:#999; font-size:11px; }
+  .info { flex:1; min-width:0; }
+  .name { font-weight:650; font-size:16px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; border:0; background:none; color:var(--ink);
+    font-family:inherit; padding:2px 4px; margin:-2px -4px; border-radius:6px; width:100%; }
+  .name:focus { outline:2px solid var(--ok); background:var(--chip); }
+  .place, .trk, .src { font-size:13px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .trk { font-variant-numeric:tabular-nums; color:var(--ink); opacity:.85; }
+  .badge { display:inline-block; font-size:11px; font-weight:600; padding:1px 7px; border-radius:20px; background:var(--chip); color:var(--muted); margin-left:4px; vertical-align:1px; }
+  .badge.dup { background:rgba(180,35,24,.12); color:var(--err); }
+  .ctrls { display:flex; flex-direction:column; gap:6px; align-items:flex-end; flex:none; }
+  .ctrlrow { display:flex; gap:6px; }
+  .mini { width:34px; height:34px; border-radius:10px; border:1px solid var(--line); background:var(--card); color:var(--ink); cursor:pointer; display:grid; place-items:center; padding:0; font-size:16px; }
+  .mini:disabled { opacity:.3; }
+  .mini svg { width:18px; height:18px; }
+  .qty { display:flex; align-items:center; gap:2px; background:var(--chip); border-radius:10px; padding:2px; }
+  .qty button { width:28px; height:28px; border:0; background:none; color:var(--ink); font-size:18px; cursor:pointer; border-radius:8px; }
+  .qty span { min-width:26px; text-align:center; font-size:13px; font-weight:600; }
+
+  .bar { position:fixed; left:0; right:0; bottom:0; padding:12px 14px calc(12px + env(safe-area-inset-bottom)); background:linear-gradient(to top, var(--bg) 70%, transparent); }
+  .bar .inner { max-width:620px; margin:0 auto; display:flex; gap:10px; }
+  button.big { flex:1; font:inherit; font-weight:650; font-size:17px; border-radius:14px; padding:15px 12px; border:1px solid var(--accent); background:var(--accent); color:var(--accent-ink); cursor:pointer; }
+  button.big.sec { flex:none; background:var(--card); color:var(--ink); border-color:var(--line); }
+  button.big:disabled { opacity:.35; cursor:default; }
+
+  .sheetwrap { position:fixed; inset:0; background:var(--sheet); display:none; align-items:flex-end; justify-content:center; z-index:20; }
+  .sheetwrap.on { display:flex; }
+  .sheet { background:var(--card); width:100%; max-width:620px; border-radius:20px 20px 0 0; padding:10px 16px calc(18px + env(safe-area-inset-bottom)); max-height:88vh; overflow:auto; }
+  .grab { width:40px; height:5px; border-radius:5px; background:var(--line); margin:4px auto 12px; }
+  .sheet h3 { margin:0 0 4px; font-size:19px; }
+  .sheet p.hint { margin:0 0 12px; color:var(--muted); font-size:13px; }
+  .opt { display:flex; gap:12px; align-items:center; width:100%; text-align:left; background:var(--chip); border:0; border-radius:14px; padding:14px; margin-bottom:8px; cursor:pointer; color:var(--ink); font:inherit; }
+  .opt b { display:block; font-size:16px; }
+  .opt span { display:block; font-size:13px; color:var(--muted); }
+  .opt .ic { width:36px; height:36px; border-radius:10px; background:var(--card); display:grid; place-items:center; flex:none; }
+  .opt .ic svg { width:20px; height:20px; }
+
+  .row { display:flex; gap:10px; align-items:center; justify-content:space-between; padding:11px 0; border-top:1px solid var(--line); }
+  .row:first-of-type { border-top:0; }
+  .row label { font-size:15px; }
+  .row small { display:block; color:var(--muted); font-size:12px; }
+  select, input[type=number] { font:inherit; font-size:16px; color:var(--ink); background:var(--chip); border:0; border-radius:10px; padding:8px 10px; }
+  input[type=number] { width:74px; }
+  input[type=range] { width:150px; accent-color:var(--accent); }
+  .switch { position:relative; width:50px; height:30px; flex:none; }
+  .switch input { opacity:0; width:0; height:0; position:absolute; }
+  .switch i { position:absolute; inset:0; background:var(--line); border-radius:30px; transition:.2s; }
+  .switch i::after { content:""; position:absolute; width:26px; height:26px; left:2px; top:2px; background:#fff; border-radius:50%; box-shadow:0 1px 3px rgba(0,0,0,.3); transition:.2s; }
+  .switch input:checked + i { background:var(--ok); }
+  .switch input:checked + i::after { transform:translateX(20px); }
+  .custom { display:none; } .custom.on { display:flex; }
+
+  .viewer { position:fixed; inset:0; background:rgba(0,0,0,.85); z-index:30; display:none; flex-direction:column; align-items:center; justify-content:center; padding:20px; }
+  .viewer.on { display:flex; }
+  .viewer canvas { max-width:100%; max-height:calc(100vh - 110px); background:#fff; border-radius:6px; image-rendering:pixelated; }
+  .viewer .vcap { color:#ddd; font-size:14px; margin-top:12px; text-align:center; }
+  .viewer button { margin-top:12px; font:inherit; background:#fff; color:#111; border:0; border-radius:12px; padding:10px 22px; font-weight:600; cursor:pointer; }
+
+  .toast { position:fixed; left:50%; bottom:96px; transform:translateX(-50%) translateY(20px); background:var(--accent); color:var(--accent-ink);
+    padding:10px 16px; border-radius:12px; font-size:14px; opacity:0; transition:.25s; pointer-events:none; z-index:40; max-width:90vw; text-align:center; }
+  .toast.on { opacity:1; transform:translateX(-50%) translateY(0); }
+  .toast.err { background:var(--err); color:#fff; }
+
+  details.help summary { cursor:pointer; font-weight:600; font-size:15px; }
+  details.help ol { padding-left:20px; margin:10px 0 2px; font-size:14px; }
+  details.help li { margin-bottom:8px; }
+  code { background:var(--chip); padding:1px 5px; border-radius:5px; font-size:13px; }
+  .progress { height:3px; background:var(--line); border-radius:3px; overflow:hidden; margin-top:10px; display:none; }
+  .progress.on { display:block; }
+  .progress i { display:block; height:100%; width:0; background:var(--ok); transition:width .2s; }
+  .summary { font-size:13px; color:var(--muted); margin:2px 4px 0; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <div>
+      <h1>Label Studio</h1>
+      <div class="sub">PDF → ZPL for Zebra · <span id="hdrSpec">4×6 · 300 dpi</span></div>
+    </div>
+    <button class="iconbtn" id="openSettings" aria-label="Print settings">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h0a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h0a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v0a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+    </button>
+  </header>
+
+  <label class="drop card" id="drop" for="file">
+    <div class="plus">+</div>
+    <div><strong>Add label PDFs</strong><span>Pick as many as you like · PDF, PNG or JPG</span></div>
+  </label>
+  <input type="file" id="file" multiple accept="application/pdf,image/png,image/jpeg,.pdf">
+  <div class="progress" id="prog"><i></i></div>
+
+  <div class="listhead">
+    <h2 id="countLbl">Labels</h2>
+    <button class="linkbtn" id="clearAll" hidden>Clear all</button>
+  </div>
+  <div id="list"><div class="empty">No labels yet. Add your shipping-label PDFs above.<br>Names and tracking numbers are read automatically.</div></div>
+  <div class="summary" id="summary"></div>
+
+  <div class="card" style="margin-top:16px">
+    <details class="help">
+      <summary>How to print on the Zebra</summary>
+      <ol>
+        <li id="help1">Tap <b>Save</b> and choose <b>One combined file</b>. In the share sheet, choose <b>Save to Files</b>, then tap the .zip in Files to unpack a real <code>.zpl</code> file.</li>
+        <li><b>USB drive:</b> save it to a flash drive connected to your iPhone, plug the drive into the ZT411, and go to <b>Storage → Print from USB</b> on the touchscreen.</li>
+        <li><b>Computer:</b> Zebra Setup Utilities → <b>Open Communication with Printer → Send File</b>. On a Mac: <code>lpr -P &lt;printer&gt; -o raw labels.zpl</code></li>
+        <li>Don't send it through AirPrint or a normal print dialog. That prints the code as text and shrinks labels.</li>
+      </ol>
+    </details>
+  </div>
+</main>
+
+<div class="bar"><div class="inner">
+  <button class="big sec" id="copyBtn" disabled>Copy</button>
+  <button class="big" id="saveBtn" disabled>Save</button>
+</div></div>
+
+<!-- Save sheet -->
+<div class="sheetwrap" id="saveSheet"><div class="sheet">
+  <div class="grab"></div>
+  <h3 id="saveTitle">Save labels</h3>
+  <p class="hint" id="saveHint">Opens the share sheet. Choose <b>Save to Files</b>, then tap the .zip to unpack it.</p>
+  <button class="opt" data-act="combined"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg></div>
+    <div><b>One combined file</b><span id="combDesc">Every label in one .zpl, printed back to back</span></div></button>
+  <button class="opt" data-act="separate"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="4" width="8" height="11" rx="1.5"/><rect x="13" y="4" width="8" height="11" rx="1.5"/><path d="M5 19h14"/></svg></div>
+    <div><b>Separate files</b><span id="sepDesc">One .zpl per label, named by recipient</span></div></button>
+  <button class="opt" data-act="txt" id="optTxt"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 3h9l4 4v14H6z"/><path d="M15 3v4h4"/></svg></div>
+    <div><b>Combined .txt (no zip)</b><span>Same ZPL inside; rename to .zpl if needed</span></div></button>
+  <button class="opt" data-act="cancel" style="justify-content:center;background:none"><b>Cancel</b></button>
+</div></div>
+
+<!-- Copy sheet -->
+<div class="sheetwrap" id="copySheet"><div class="sheet">
+  <div class="grab"></div>
+  <h3>Copy</h3>
+  <p class="hint">Copies to your clipboard.</p>
+  <button class="opt" data-act="trk"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6v12M7 6v12M11 6v12M14 6v12M18 6v12M20 6v12"/></svg></div>
+    <div><b>Tracking list</b><span>Name, city and tracking number for each label</span></div></button>
+  <button class="opt" data-act="zpl"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 7l-5 5 5 5M16 7l5 5-5 5"/></svg></div>
+    <div><b>ZPL code</b><span>All labels as raw ZPL text</span></div></button>
+  <button class="opt" data-act="cancel" style="justify-content:center;background:none"><b>Cancel</b></button>
+</div></div>
+
+<!-- Settings sheet -->
+<div class="sheetwrap" id="setSheet"><div class="sheet">
+  <div class="grab"></div>
+  <h3>Print settings</h3>
+  <p class="hint">Changes apply to every label in the list.</p>
+  <div class="row"><label for="size">Label size</label>
+    <select id="size">
+      <option value="4x6" selected>4 × 6 in</option><option value="4x4">4 × 4 in</option><option value="4x8">4 × 8 in</option>
+      <option value="4x3">4 × 3 in</option><option value="4x2">4 × 2 in</option><option value="3x2">3 × 2 in</option>
+      <option value="2.25x1.25">2.25 × 1.25 in</option><option value="2x1">2 × 1 in</option><option value="custom">Custom…</option>
+    </select></div>
+  <div class="row custom" id="customRow"><label>Width × height (in)</label>
+    <span><input type="number" id="cw" value="4" step="0.05" min="0.5" max="4.1"> × <input type="number" id="ch" value="6" step="0.05" min="0.5" max="39"></span></div>
+  <div class="row"><label for="dpi">Printer resolution<small>ZT411 part # ZT41143 = 300 dpi</small></label>
+    <select id="dpi"><option value="203">203 dpi</option><option value="300" selected>300 dpi</option><option value="600">600 dpi</option></select></div>
+  <div class="row"><label for="crop">Auto-crop<small>Trim blank paper around the label</small></label>
+    <span class="switch"><input type="checkbox" id="crop" checked><i></i></span></div>
+  <div class="row"><label for="rotate">Auto-rotate<small>Turn sideways labels upright</small></label>
+    <span class="switch"><input type="checkbox" id="rotate" checked><i></i></span></div>
+  <div class="row"><label for="thr">Darkness<small id="thrVal">Threshold 160</small></label>
+    <input type="range" id="thr" min="60" max="240" value="160"></div>
+  <div class="row"><label for="ocr">Read names &amp; tracking<small>Text recognition, runs on your phone</small></label>
+    <span class="switch"><input type="checkbox" id="ocr" checked><i></i></span></div>
+  <button class="big" id="closeSettings" style="width:100%;margin-top:12px">Done</button>
+</div></div>
+
+<div class="viewer" id="viewer"><canvas id="vcanvas"></canvas><div class="vcap" id="vcap"></div><button id="vclose">Close</button></div>
+<div class="toast" id="toast"></div>
+
+<div id="diag" style="display:none;position:fixed;left:10px;right:10px;top:10px;z-index:50;background:#b42318;color:#fff;font-size:13px;padding:10px 12px;border-radius:12px;white-space:pre-wrap"></div>
+<script>
+window.__diag = msg => { try { const d = document.getElementById('diag'); d.style.display = 'block'; d.textContent = 'Something went wrong: ' + String(msg).slice(0, 300) + '\n(Screenshot this and send it to Claude.)'; } catch (e) {} };
+window.addEventListener('error', e => { if (e && e.message) window.__diag(e.message); });
+window.addEventListener('unhandledrejection', e => { const r = e && e.reason; if (r && !r.__quiet) window.__diag(r.message || r); });
+</script>
+<!-- PDF engine; the worker file loaded as a plain script makes pdf.js run in-page (no background worker needed) -->
+<script src="./pdf.min.js"></script>
+<script src="./pdf.worker.min.js"></script>
+<script>
+(() => {
+'use strict';
+const $ = id => document.getElementById(id);
+const abs = p => new URL(p, location.href).href;
+let downloads = null;
+if (window.claude && typeof window.claude.use === 'function') {
+  window.claude.use('downloads').then(d => { downloads = d; }).catch(() => {});
+}
+function loadScript(src) { return new Promise((res, rej) => { const sc = document.createElement('script'); sc.src = src; sc.onload = res; sc.onerror = () => rej(new Error('Could not load ' + src.split('/').pop())); document.head.appendChild(sc); }); }
+let pdfReady = null;
+function ensurePdf() {
+  if (!pdfReady) pdfReady = (async () => {
+    if (!window.pdfjsLib || !window.pdfjsWorker) {
+      const cdn = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/';
+      if (!window.pdfjsLib) await loadScript(cdn + 'pdf.min.js');
+      if (!window.pdfjsWorker) await loadScript(cdn + 'pdf.worker.min.js');
+    }
+    if (!window.pdfjsLib) throw new Error('PDF engine could not start');
+    pdfjsLib.GlobalWorkerOptions.workerSrc = abs('./pdf.worker.min.js');
+  })().catch(e => { pdfReady = null; throw e; });
+  return pdfReady;
+}
+
+// ---------------- settings ----------------
+const KEYS = ['size','cw','ch','dpi','crop','rotate','thr','ocr'];
+try {
+  const saved = JSON.parse(localStorage.getItem('labelstudio') || '{}');
+  KEYS.forEach(k => { if (k in saved) { const el = $(k); if (el.type === 'checkbox') el.checked = saved[k]; else el.value = saved[k]; } });
+} catch (e) {}
+function persist() {
+  try { const o = {}; KEYS.forEach(k => { const el = $(k); o[k] = el.type === 'checkbox' ? el.checked : el.value; }); localStorage.setItem('labelstudio', JSON.stringify(o)); } catch (e) {}
+}
+function labelInches() {
+  if ($('size').value === 'custom') return [Math.max(0.5, +$('cw').value || 4), Math.max(0.5, +$('ch').value || 6)];
+  return $('size').value.split('x').map(Number);
+}
+function getOpts() {
+  const [wi, hi] = labelInches(), dpi = +$('dpi').value;
+  return { wi, hi, dpi, W: Math.max(8, Math.round(wi * dpi / 8) * 8), H: Math.round(hi * dpi), margin: Math.round(dpi * 0.02),
+           crop: $('crop').checked, rotate: $('rotate').checked, thr: +$('thr').value };
+}
+function syncSettingsUI() {
+  $('customRow').classList.toggle('on', $('size').value === 'custom');
+  $('thrVal').textContent = 'Threshold ' + $('thr').value;
+  const [wi, hi] = labelInches();
+  $('hdrSpec').textContent = wi + '×' + hi + ' · ' + $('dpi').value + ' dpi';
+}
+
+// ---------------- toast ----------------
+let toastT;
+function toast(msg, err) {
+  const t = $('toast'); t.textContent = msg; t.className = 'toast on' + (err ? ' err' : '');
+  clearTimeout(toastT); toastT = setTimeout(() => t.className = 'toast', 2600);
+}
+
+// ---------------- sources ----------------
+async function loadSources(file) {
+  const buf = await file.arrayBuffer();
+  const head = new Uint8Array(buf.slice(0, 5));
+  const isPdf = /pdf/i.test(file.type) || /\.pdf$/i.test(file.name) || String.fromCharCode(...head) === '%PDF-';
+  if (isPdf) {
+    await ensurePdf();
+    const pdf = await pdfjsLib.getDocument({ data: new Uint8Array(buf), isEvalSupported: false }).promise;
+    const out = [];
+    for (let n = 1; n <= pdf.numPages; n++) {
+      const page = await pdf.getPage(n);
+      const vp = page.getViewport({ scale: 1 });
+      out.push({ w: vp.width, h: vp.height, page: n, pages: pdf.numPages,
+        async render(bx, by, bw, bh, s) {
+          const c = document.createElement('canvas');
+          c.width = Math.max(1, Math.ceil(bw * s)); c.height = Math.max(1, Math.ceil(bh * s));
+          const ctx = c.getContext('2d'); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, c.width, c.height);
+          await page.render({ canvasContext: ctx, viewport: page.getViewport({ scale: s }), transform: [1, 0, 0, 1, -bx * s, -by * s] }).promise;
+          return c;
+        } });
+    }
+    return out;
+  }
+  const url = URL.createObjectURL(new Blob([buf], { type: file.type || 'image/png' }));
+  const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = () => rej(new Error('Could not read image')); i.src = url; });
+  return [{ w: img.naturalWidth, h: img.naturalHeight, page: 1, pages: 1,
+    async render(bx, by, bw, bh, s) {
+      const c = document.createElement('canvas');
+      c.width = Math.max(1, Math.ceil(bw * s)); c.height = Math.max(1, Math.ceil(bh * s));
+      const ctx = c.getContext('2d'); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, c.width, c.height);
+      ctx.imageSmoothingQuality = 'high'; ctx.drawImage(img, bx, by, bw, bh, 0, 0, bw * s, bh * s);
+      return c;
+    } }];
+}
+
+async function findInk(src) {
+  const s = Math.min(1600 / Math.max(src.w, src.h), 3);
+  const c = await src.render(0, 0, src.w, src.h, s);
+  const { data, width: W, height: H } = c.getContext('2d').getImageData(0, 0, c.width, c.height);
+  let x0 = W, y0 = H, x1 = -1, y1 = -1;
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    const i = (y * W + x) * 4;
+    const lum = data[i + 3] < 10 ? 255 : (data[i] * 299 + data[i + 1] * 587 + data[i + 2] * 114) / 1000;
+    if (lum < 200) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+  }
+  if (x1 < 0) return null;
+  const pad = 1.5;
+  const bx = Math.max(0, (x0 - pad) / s), by = Math.max(0, (y0 - pad) / s);
+  return { x: bx, y: by, w: Math.min(src.w, (x1 + 1 + pad) / s) - bx, h: Math.min(src.h, (y1 + 1 + pad) / s) - by };
+}
+
+async function renderLabel(src, o) {
+  let box = { x: 0, y: 0, w: src.w, h: src.h };
+  if (o.crop) { const b = await findInk(src); if (!b) return null; box = b; }
+  const { W, H, margin: m } = o;
+  const rot = o.rotate && ((box.w > box.h) !== (W > H)) && Math.abs(box.w - box.h) > 0.02 * Math.max(box.w, box.h);
+  const rw = rot ? box.h : box.w, rh = rot ? box.w : box.h;
+  const s = Math.min((W - 2 * m) / rw, (H - 2 * m) / rh);
+  const part = await src.render(box.x, box.y, box.w, box.h, s);
+  const out = document.createElement('canvas'); out.width = W; out.height = H;
+  const ctx = out.getContext('2d');
+  ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, W, H);
+  ctx.save(); ctx.translate(W / 2, H / 2); if (rot) ctx.rotate(Math.PI / 2);
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(part, Math.round(-part.width / 2), Math.round(-part.height / 2));
+  ctx.restore();
+  const d = ctx.getImageData(0, 0, W, H).data;
+  const bpr = W / 8, bits = new Uint8Array(bpr * H);
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    const i = (y * W + x) * 4;
+    if ((d[i] * 299 + d[i + 1] * 587 + d[i + 2] * 114) / 1000 < o.thr) bits[y * bpr + (x >> 3)] |= 0x80 >> (x & 7);
+  }
+  out.width = out.height = 0; part.width = part.height = 0; // free memory (iOS)
+  return { bits, bpr, W, H, rotated: rot };
+}
+
+// 1-bit → canvas at a given scale (for thumbnails, viewer, OCR)
+function bitsToCanvas(L, scale) {
+  const full = document.createElement('canvas'); full.width = L.W; full.height = L.H;
+  const ctx = full.getContext('2d'), img = ctx.createImageData(L.W, L.H), d = img.data;
+  for (let y = 0; y < L.H; y++) for (let x = 0; x < L.W; x++) {
+    const v = (L.bits[y * L.bpr + (x >> 3)] & (0x80 >> (x & 7))) ? 0 : 255, i = (y * L.W + x) * 4;
+    d[i] = d[i + 1] = d[i + 2] = v; d[i + 3] = 255;
+  }
+  ctx.putImageData(img, 0, 0);
+  if (!scale || scale === 1) return full;
+  const c = document.createElement('canvas'); c.width = Math.round(L.W * scale); c.height = Math.round(L.H * scale);
+  const c2 = c.getContext('2d'); c2.fillStyle = '#fff'; c2.fillRect(0, 0, c.width, c.height);
+  c2.imageSmoothingQuality = 'high'; c2.drawImage(full, 0, 0, c.width, c.height);
+  full.width = full.height = 0;
+  return c;
+}
+
+// ---------------- ZPL ----------------
+const HEX = '0123456789ABCDEF';
+function repeatCode(n) {
+  let s = '', hi = Math.floor(n / 20), lo = n % 20;
+  while (hi > 20) { s += 'z'; hi -= 20; }
+  if (hi > 0) s += String.fromCharCode(102 + hi);
+  if (lo > 0) s += String.fromCharCode(70 + lo);
+  return s;
+}
+function compressRow(hex) {
+  let end = hex.length, tail = '';
+  if (hex[end - 1] === '0') { while (end > 0 && hex[end - 1] === '0') end--; tail = ','; }
+  else if (hex[end - 1] === 'F') { while (end > 0 && hex[end - 1] === 'F') end--; tail = '!'; }
+  let out = '';
+  for (let i = 0; i < end;) { const c = hex[i]; let j = i + 1; while (j < end && hex[j] === c) j++; out += (j - i === 1 ? '' : repeatCode(j - i)) + c; i = j; }
+  return out + tail;
+}
+function toZPL(L, copies) {
+  if (L.zpl) return L.zpl.replace(/\^PQ\d+/, '^PQ' + copies);
+  let body = '', prev = null;
+  for (let y = 0; y < L.H; y++) {
+    let hex = '';
+    for (let k = 0; k < L.bpr; k++) { const b = L.bits[y * L.bpr + k]; hex += HEX[b >> 4] + HEX[b & 15]; }
+    body += hex === prev ? ':' : compressRow(hex); prev = hex;
+  }
+  const total = L.bpr * L.H;
+  L.zpl = '^XA\n^PW' + L.W + '\n^LL' + L.H + '\n^LH0,0\n^PON\n^FO0,0^GFA,' + total + ',' + total + ',' + L.bpr + ',' + body + '^FS\n^PQ1\n^XZ\n';
+  return L.zpl.replace(/\^PQ\d+/, '^PQ' + copies);
+}
+
+// ---------------- ZIP (store) ----------------
+const CRC = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
+function crc32(u8) { let c = 0xFFFFFFFF; for (let i = 0; i < u8.length; i++) c = CRC[(c ^ u8[i]) & 255] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; }
+function makeZip(files) {
+  const enc = new TextEncoder(), parts = [], central = [];
+  const now = new Date();
+  const dtime = (now.getHours() << 11) | (now.getMinutes() << 5) | (now.getSeconds() >> 1);
+  const ddate = ((now.getFullYear() - 1980) << 9) | ((now.getMonth() + 1) << 5) | now.getDate();
+  let offset = 0;
+  for (const f of files) {
+    const name = enc.encode(f.name), data = typeof f.data === 'string' ? enc.encode(f.data) : f.data, crc = crc32(data);
+    const lh = new DataView(new ArrayBuffer(30));
+    lh.setUint32(0, 0x04034b50, true); lh.setUint16(4, 20, true); lh.setUint16(6, 0x0800, true); lh.setUint16(8, 0, true);
+    lh.setUint16(10, dtime, true); lh.setUint16(12, ddate, true); lh.setUint32(14, crc, true);
+    lh.setUint32(18, data.length, true); lh.setUint32(22, data.length, true); lh.setUint16(26, name.length, true); lh.setUint16(28, 0, true);
+    parts.push(lh.buffer, name, data);
+    const ch = new DataView(new ArrayBuffer(46));
+    ch.setUint32(0, 0x02014b50, true); ch.setUint16(4, 20, true); ch.setUint16(6, 20, true); ch.setUint16(8, 0x0800, true); ch.setUint16(10, 0, true);
+    ch.setUint16(12, dtime, true); ch.setUint16(14, ddate, true); ch.setUint32(16, crc, true);
+    ch.setUint32(20, data.length, true); ch.setUint32(24, data.length, true); ch.setUint16(28, name.length, true);
+    ch.setUint32(42, offset, true);
+    central.push(ch.buffer, name);
+    offset += 30 + name.length + data.length;
+  }
+  const cdSize = central.reduce((a, b) => a + (b.byteLength || b.length), 0);
+  const end = new DataView(new ArrayBuffer(22));
+  end.setUint32(0, 0x06054b50, true); end.setUint16(8, files.length, true); end.setUint16(10, files.length, true);
+  end.setUint32(12, cdSize, true); end.setUint32(16, offset, true);
+  return new Blob([...parts, ...central, end.buffer], { type: 'application/zip' });
+}
+
+// ---------------- OCR ----------------
+let ocrWorkerP = null, ocrBroken = false;
+// English model ships as base64 inside a .js file (the host only serves certain file types)
+function loadLangData() {
+  return new Promise((res, rej) => {
+    const done = () => {
+      const b = atob(window.__ENG_TRAINEDDATA_GZ_B64); const u = new Uint8Array(b.length);
+      for (let i = 0; i < b.length; i++) u[i] = b.charCodeAt(i);
+      window.__ENG_TRAINEDDATA_GZ_B64 = null; res(u);
+    };
+    if (window.__ENG_TRAINEDDATA_GZ_B64) return done();
+    const sc = document.createElement('script'); sc.src = abs('./eng-traineddata.js');
+    sc.onload = () => window.__ENG_TRAINEDDATA_GZ_B64 ? done() : rej(new Error('lang'));
+    sc.onerror = () => rej(new Error('lang')); document.head.appendChild(sc);
+  });
+}
+const withTimeout = (p, ms, what) => Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(Object.assign(new Error(what + ' timed out'), { __quiet: true })), ms))]);
+function getOcr() {
+  if (!ocrWorkerP) {
+    ocrWorkerP = withTimeout((window.Tesseract ? Promise.resolve() : loadScript(abs('./tesseract.min.js'))).then(loadLangData).then(data => Tesseract.createWorker([{ code: 'eng', data }], 1, {
+      workerPath: abs('./worker.min.js'), corePath: abs('./'),
+      workerBlobURL: false, cacheMethod: 'none', logger: () => {}, errorHandler: () => {}
+    })), 45000, 'Name reader').catch(e => { ocrBroken = true; e.__quiet = true; throw e; });
+  }
+  return ocrWorkerP;
+}
+const titleCase = s => s.toLowerCase().replace(/\b([a-z])/g, m => m.toUpperCase()).replace(/\b(Ii|Iii|Iv)\b/g, m => m.toUpperCase());
+function parseLabel(text) {
+  const lines = text.split('\n').map(s => s.replace(/\s+/g, ' ').trim()).filter(Boolean);
+  const r = { name: '', place: '', tracking: '' };
+  // recipient
+  let i = lines.findIndex(l => /S\s*H\s*I\s*P\s*T\s*O/i.test(l));
+  if (i < 0) i = lines.findIndex(l => /^(DELIVER\s*TO|TO)\b\s*:?/i.test(l));
+  if (i >= 0) {
+    let rest = lines[i].replace(/.*?(S\s*H\s*I\s*P\s*T\s*O|DELIVER\s*TO|^TO)\s*[:;.]?\s*/i, '');
+    let j = i + 1;
+    const clean = s => s.replace(/[^A-Za-z .'\-&]/g, ' ').replace(/\s+/g, ' ').trim();
+    let nm = clean(rest);
+    while ((!nm || nm.length < 3) && j < lines.length && j < i + 3) { nm = clean(lines[j]); j++; }
+    // drop stray 1–2 letter junk at the start (from the 2D barcode)
+    nm = nm.replace(/^([A-Za-z]{1,2} )+(?=[A-Za-z]{2,})/, '').trim();
+    r.name = nm ? titleCase(nm) : '';
+    for (let k = i; k < Math.min(lines.length, i + 6); k++) {
+      const m = lines[k].match(/([A-Za-z][A-Za-z .'\-]+?)[ ,]+([A-Z]{2}) (\d{5})(-\d{4})?\b/);
+      if (m) {
+        // strip 1–2 letter junk the 2D barcode beside the address leaves at the line start (keep real prefixes like St, El, La)
+        let city = m[1].trim().replace(/^(?:(?!(?:st|ft|mt|el|la|le|de|du|lo|da|di|ny)\b)[A-Za-z]{1,2} )+/i, '').trim();
+        r.place = titleCase(city) + ', ' + m[2]; break;
+      }
+    }
+  }
+  // tracking
+  const ups = text.replace(/\s/g, '').match(/1Z[0-9A-Z]{16}/);
+  if (ups) r.tracking = ups[0];
+  else {
+    let best = '';
+    for (const l of lines) {
+      if (/[A-Za-z]{3,}/.test(l)) continue;
+      const dg = l.replace(/[Oo]/g, '0').replace(/[^0-9]/g, '');
+      if (dg.length >= 20 && dg.length <= 34 && dg.length > best.length) best = dg;
+    }
+    if (!best) { const m = text.replace(/ /g, '').match(/9[0-9]{21}/); if (m) best = m[0]; }
+    if (best) r.tracking = best.replace(/(\d{4})(?=\d)/g, '$1 ');
+  }
+  return r;
+}
+
+// ---------------- state ----------------
+let items = [];          // {id, fileName, src, L, thumb, name, place, tracking, ocr, copies, userName}
+let nextId = 1, renderGen = 0;
+const ocrQueue = [];
+let ocrRunning = false;
+
+async function runOcr() {
+  if (ocrRunning || !$('ocr').checked) return;
+  ocrRunning = true;
+  try {
+    while (ocrQueue.length) {
+      const it = ocrQueue.shift();
+      if (!items.includes(it) || it.ocr === 'done' || !it.L) continue;
+      it.ocr = 'busy'; draw();
+      try {
+        const w = await getOcr();
+        const scale = Math.min(1, 1300 / Math.max(it.L.W, it.L.H) * 1.4);
+        const c = bitsToCanvas(it.L, scale);
+        const { data } = await withTimeout(w.recognize(c), 30000, 'Reading');
+        c.width = c.height = 0;
+        const p = parseLabel(data.text || '');
+        it.name = p.name; it.place = p.place; it.tracking = p.tracking; it.ocr = 'done';
+      } catch (e) {
+        it.ocr = 'fail';
+        if (ocrBroken) { items.forEach(x => { if (x.ocr === 'wait' || x.ocr === 'busy') x.ocr = 'fail'; }); ocrQueue.length = 0; toast('Couldn\'t read names on this device. Labels still work, and you can type names in.', true); }
+      }
+      draw();
+    }
+  } finally { ocrRunning = false; }
+}
+
+function makeThumb(L) {
+  const c = bitsToCanvas(L, 186 / L.H);
+  const u = c.toDataURL('image/png'); c.width = c.height = 0; return u;
+}
+
+async function addFiles(files) {
+  files = [...files]; if (!files.length) return;
+  const prog = $('prog'); prog.classList.add('on');
+  const o = getOpts(), gen = renderGen;
+  let done = 0, skipped = 0, failed = 0, lastErr = null;
+  for (const f of files) {
+    try {
+      const srcs = await loadSources(f);
+      for (const src of srcs) {
+        const L = await renderLabel(src, o);
+        if (gen !== renderGen) { /* settings changed mid-way; fall through, rerender handles it */ }
+        if (!L) { skipped++; continue; }
+        const base = (f.name || 'label').replace(/\.[^.]+$/, '');
+        const it = { id: nextId++, fileName: base + (src.pages > 1 ? ' p' + src.page : ''), src, L, thumb: makeThumb(L),
+                     name: '', place: '', tracking: '', ocr: $('ocr').checked ? 'wait' : 'off', copies: 1, userName: null };
+        items.push(it); ocrQueue.push(it); draw();
+      }
+    } catch (e) { failed++; lastErr = e; }
+    done++; prog.firstElementChild.style.width = (done / files.length * 100) + '%';
+  }
+  setTimeout(() => { prog.classList.remove('on'); prog.firstElementChild.style.width = '0'; }, 400);
+  if (failed) { toast(failed + ' file' + (failed > 1 ? 's' : '') + ' could not be read', true); if (lastErr) window.__diag(lastErr.message || lastErr); }
+  else if (skipped) toast(skipped + ' blank page' + (skipped > 1 ? 's' : '') + ' skipped');
+  draw(); runOcr();
+}
+
+async function rerenderAll() {
+  const gen = ++renderGen, o = getOpts();
+  $('prog').classList.add('on');
+  for (let k = 0; k < items.length; k++) {
+    const it = items[k];
+    const L = await renderLabel(it.src, o);
+    if (gen !== renderGen) return;
+    if (L) { it.L = L; it.thumb = makeThumb(L); }
+    $('prog').firstElementChild.style.width = ((k + 1) / items.length * 100) + '%';
+    draw();
+  }
+  setTimeout(() => { $('prog').classList.remove('on'); $('prog').firstElementChild.style.width = '0'; }, 300);
+}
+
+// ---------------- UI ----------------
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const displayName = it => it.userName || it.name || it.fileName;
+function draw() {
+  const list = $('list');
+  $('clearAll').hidden = !items.length;
+  const n = items.length, total = items.reduce((a, b) => a + b.copies, 0);
+  $('countLbl').textContent = n ? n + (n === 1 ? ' label' : ' labels') + (total !== n ? ' · ' + total + ' prints' : '') : 'Labels';
+  $('saveBtn').disabled = $('copyBtn').disabled = !n;
+  $('saveBtn').textContent = n ? 'Save ' + n + (n === 1 ? ' label' : ' labels') : 'Save';
+  if (!n) { list.innerHTML = '<div class="empty">No labels yet. Add your shipping-label PDFs above.<br>Names and tracking numbers are read automatically.</div>'; $('summary').textContent = ''; return; }
+  const trkCount = {};
+  items.forEach(it => { if (it.tracking) trkCount[it.tracking] = (trkCount[it.tracking] || 0) + 1; });
+  const focusId = document.activeElement && document.activeElement.dataset && document.activeElement.dataset.nameid;
+  if (focusId) return; // don't clobber while editing a name
+  list.innerHTML = items.map((it, i) => {
+    const status = it.ocr === 'busy' ? '<span class="badge">Reading…</span>' : it.ocr === 'wait' ? '<span class="badge">Queued</span>' :
+                   it.ocr === 'fail' ? '<span class="badge">Not read</span>' : '';
+    const dup = it.tracking && trkCount[it.tracking] > 1 ? '<span class="badge dup">Duplicate</span>' : '';
+    return `<div class="item" data-id="${it.id}">
+      <img class="thumb" src="${it.thumb}" alt="Label preview" data-view="${it.id}">
+      <div class="info">
+        <input class="name" value="${esc(displayName(it))}" data-nameid="${it.id}" aria-label="Label name" enterkeyhint="done">
+        <div class="place">${esc(it.place || (it.ocr === 'done' ? '' : it.fileName))}${status}${dup}</div>
+      </div>
+      <div class="ctrls">
+        <div class="ctrlrow">
+          <button class="mini" data-up="${it.id}" ${i === 0 ? 'disabled' : ''} aria-label="Move up"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 15l6-6 6 6"/></svg></button>
+          <button class="mini" data-down="${it.id}" ${i === items.length - 1 ? 'disabled' : ''} aria-label="Move down"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg></button>
+          <button class="mini" data-del="${it.id}" aria-label="Remove"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+        </div>
+        <div class="qty"><button data-minus="${it.id}" aria-label="Fewer copies">−</button><span>×${it.copies}</span><button data-plus="${it.id}" aria-label="More copies">+</button></div>
+      </div>
+      <div class="trk">${esc(it.tracking || (it.ocr === 'done' ? 'Tracking not found' : ''))}</div>
+    </div>`;
+  }).join('');
+  const dups = Object.values(trkCount).some(v => v > 1);
+  $('summary').textContent = dups ? 'Heads up: some labels share a tracking number. Remove the duplicate so you don\'t print it twice.' : '';
+}
+
+const byId = id => items.find(x => x.id === +id);
+$('list').addEventListener('click', e => {
+  const t = e.target.closest('[data-up],[data-down],[data-del],[data-plus],[data-minus],[data-view]');
+  if (!t) return;
+  const d = t.dataset;
+  if (d.view) return openViewer(byId(d.view));
+  const id = +(d.up || d.down || d.del || d.plus || d.minus), i = items.findIndex(x => x.id === id);
+  if (i < 0) return;
+  if (d.up && i > 0) [items[i - 1], items[i]] = [items[i], items[i - 1]];
+  else if (d.down && i < items.length - 1) [items[i + 1], items[i]] = [items[i], items[i + 1]];
+  else if (d.del) items.splice(i, 1);
+  else if (d.plus) items[i].copies = Math.min(99, items[i].copies + 1);
+  else if (d.minus) items[i].copies = Math.max(1, items[i].copies - 1);
+  draw();
+});
+$('list').addEventListener('change', e => {
+  if (!e.target.dataset.nameid) return;
+  const it = byId(e.target.dataset.nameid); if (!it) return;
+  const v = e.target.value.trim(); it.userName = v && v !== (it.name || it.fileName) ? v : null;
+});
+$('list').addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.dataset.nameid) e.target.blur(); });
+$('list').addEventListener('focusout', e => { if (e.target.dataset.nameid) setTimeout(draw, 0); });
+
+$('clearAll').addEventListener('click', () => { items = []; ocrQueue.length = 0; draw(); });
+
+// file input + drag/drop
+$('file').addEventListener('change', e => { addFiles(e.target.files); e.target.value = ''; });
+const drop = $('drop');
+['dragenter', 'dragover'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add('over'); }));
+['dragleave', 'drop'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove('over'); }));
+drop.addEventListener('drop', e => { if (e.dataTransfer && e.dataTransfer.files) addFiles(e.dataTransfer.files); });
+
+// viewer
+function openViewer(it) {
+  if (!it) return;
+  const big = bitsToCanvas(it.L, 1), v = $('vcanvas');
+  v.width = big.width; v.height = big.height; v.getContext('2d').drawImage(big, 0, 0); big.width = big.height = 0;
+  $('vcap').textContent = displayName(it) + (it.tracking ? ' · ' + it.tracking : '') + ' · ' + it.L.W + '×' + it.L.H + ' dots';
+  $('viewer').classList.add('on');
+}
+$('vclose').addEventListener('click', () => { $('viewer').classList.remove('on'); const v = $('vcanvas'); v.width = v.height = 0; });
+$('viewer').addEventListener('click', e => { if (e.target === $('viewer')) $('vclose').click(); });
+
+// sheets
+function openSheet(id) { $(id).classList.add('on'); }
+function closeSheets() { document.querySelectorAll('.sheetwrap').forEach(s => s.classList.remove('on')); }
+document.querySelectorAll('.sheetwrap').forEach(s => s.addEventListener('click', e => { if (e.target === s) closeSheets(); }));
+$('openSettings').addEventListener('click', () => openSheet('setSheet'));
+$('closeSettings').addEventListener('click', closeSheets);
+$('saveBtn').addEventListener('click', () => { $('saveTitle').textContent = 'Save ' + items.length + (items.length === 1 ? ' label' : ' labels'); openSheet('saveSheet'); });
+$('copyBtn').addEventListener('click', () => openSheet('copySheet'));
+
+// settings changes
+['size', 'cw', 'ch', 'dpi', 'crop', 'rotate'].forEach(k => $(k).addEventListener('change', () => { syncSettingsUI(); persist(); items.forEach(it => it.L && (it.L.zpl = null)); if (items.length) rerenderAll(); }));
+$('thr').addEventListener('input', syncSettingsUI);
+$('thr').addEventListener('change', () => { persist(); if (items.length) rerenderAll(); });
+$('ocr').addEventListener('change', () => {
+  persist();
+  if ($('ocr').checked) { items.forEach(it => { if (it.ocr !== 'done') { it.ocr = 'wait'; ocrQueue.push(it); } }); runOcr(); }
+  else { ocrQueue.length = 0; items.forEach(it => { if (it.ocr !== 'done') it.ocr = 'off'; }); }
+  draw();
+});
+
+// ---------------- outputs ----------------
+const today = () => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
+const safe = s => s.replace(/[^\w\- ]+/g, '').trim().replace(/\s+/g, '_').slice(0, 50) || 'label';
+function combinedZPL() { return items.map(it => toZPL(it.L, it.copies)).join(''); }
+function batchName() { const [wi, hi] = labelInches(); return 'labels_' + today() + '_' + items.length + 'x_' + wi + 'x' + hi + '_' + $('dpi').value + 'dpi'; }
+
+// Two homes: inside Claude (saves go through Claude's download prompt) or on your own website (normal downloads).
+const IN_CLAUDE = !!(window.claude && typeof window.claude.use === 'function') || (() => { try { return window.self !== window.top; } catch (e) { return true; } })();
+const IS_TOUCH = window.matchMedia && matchMedia('(pointer: coarse)').matches;
+function anchorDownload(name, blob) {
+  const u = URL.createObjectURL(blob), a = document.createElement('a');
+  a.href = u; a.download = name; a.rel = 'noopener'; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(u), 60000);
+}
+// files: [{name, data(string)}]; zipName used when several files must become one download
+function webSave(files, zipName) {
+  const asFiles = files.map(f => new File([f.data], f.name, { type: 'text/plain' }));
+  if (IS_TOUCH && navigator.share && navigator.canShare && navigator.canShare({ files: asFiles })) {
+    // call share synchronously inside the tap so iOS allows it
+    navigator.share({ files: asFiles }).then(() => toast(files.length > 1 ? files.length + ' files ready' : 'Saved: ' + files[0].name))
+      .catch(e => { if (e && e.name === 'AbortError') toast('Save cancelled'); else fallbackDownload(files, zipName); });
+    return;
+  }
+  fallbackDownload(files, zipName);
+}
+function fallbackDownload(files, zipName) {
+  if (files.length === 1) { anchorDownload(files[0].name, new Blob([files[0].data], { type: 'application/octet-stream' })); toast('Downloaded: ' + files[0].name); }
+  else { anchorDownload(zipName, makeZip(files)); toast('Downloaded: ' + zipName); }
+}
+
+async function save(filename, data) {
+  if (!downloads) { toast('Saving isn\'t available here. Use Copy instead.', true); return false; }
+  try { await downloads.save({ filename, data }); toast('Saved: ' + filename); return true; }
+  catch (e) {
+    const c = e && e.code;
+    if (c === 'declined') toast('Save cancelled');
+    else if (c === 'rate_limited') toast('One moment, then try again', true);
+    else toast('Saving isn\'t available here. Use Copy instead.', true);
+    return false;
+  }
+}
+
+$('saveSheet').addEventListener('click', async e => {
+  const b = e.target.closest('[data-act]'); if (!b) return;
+  const act = b.dataset.act; closeSheets();
+  if (act === 'cancel' || !items.length) return;
+  const name = batchName();
+  if (!IN_CLAUDE) {
+    if (act === 'combined' || act === 'txt') webSave([{ name: name + '.zpl', data: combinedZPL() }], name + '.zip');
+    else webSave(separateFiles(), name + '_separate.zip');
+    return;
+  }
+  if (act === 'combined') await save(name + '.zip', makeZip([{ name: name + '.zpl', data: combinedZPL() }]));
+  else if (act === 'txt') await save(name + '.zpl.txt', new Blob([combinedZPL()], { type: 'text/plain' }));
+  else if (act === 'separate') await save(name + '_separate.zip', makeZip(separateFiles()));
+});
+function separateFiles() {
+  const used = {};
+  return items.map((it, i) => {
+    let base = String(i + 1).padStart(2, '0') + '_' + safe(displayName(it)) + (it.tracking ? '_' + it.tracking.replace(/\s/g, '').slice(-4) : '');
+    while (used[base]) base += '_'; used[base] = 1;
+    return { name: base + '.zpl', data: toZPL(it.L, it.copies) };
+  });
+}
+// wording for the save sheet and help, per home
+if (!IN_CLAUDE) {
+  $('saveHint').innerHTML = IS_TOUCH ? 'Saves real <b>.zpl</b> files. On iPhone, choose <b>Save to Files</b>.' : 'Downloads real <b>.zpl</b> files.';
+  $('optTxt').style.display = 'none';
+  $('combDesc').textContent = 'Every label in one .zpl file, printed back to back';
+  $('sepDesc').textContent = IS_TOUCH ? 'One .zpl per label, named by recipient' : 'One .zpl per label in a .zip, named by recipient';
+  $('help1').innerHTML = 'Tap <b>Save</b> and choose <b>One combined file</b>. On iPhone, pick <b>Save to Files</b> in the share sheet.';
+}
+
+async function copyText(text, okMsg) {
+  try { await navigator.clipboard.writeText(text); toast(okMsg); return; } catch (e) {}
+  try {
+    const ta = document.createElement('textarea'); ta.value = text; ta.setAttribute('readonly', ''); ta.style.cssText = 'position:fixed;opacity:0';
+    document.body.appendChild(ta); ta.select(); ta.setSelectionRange(0, text.length);
+    const ok = document.execCommand('copy'); ta.remove();
+    toast(ok ? okMsg : 'Copy was blocked', !ok);
+  } catch (e) { toast('Copy was blocked', true); }
+}
+$('copySheet').addEventListener('click', async e => {
+  const b = e.target.closest('[data-act]'); if (!b) return;
+  const act = b.dataset.act; closeSheets();
+  if (act === 'cancel' || !items.length) return;
+  if (act === 'zpl') copyText(combinedZPL(), 'ZPL copied');
+  else copyText(items.map((it, i) => (i + 1) + '. ' + displayName(it) + (it.place ? ' (' + it.place + ')' : '') + ' — ' + (it.tracking || 'no tracking found')).join('\n'), 'Tracking list copied');
+});
+
+syncSettingsUI(); draw();
+window.__ls = { get items() { return items; }, combinedZPL, makeZip, parseLabel, batchName };
+})();
+</script>
+</body>
+</html>
