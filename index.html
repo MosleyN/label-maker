@@ -150,6 +150,7 @@
     <details class="help">
       <summary>How to print on the Zebra</summary>
       <ol>
+        <li id="helpPrint" style="display:none"><b>Print straight from here:</b> your phone has to be on the same Wi-Fi as the printer. Put the printer's IP address in settings (gear button), tap <b>Send a test label</b> once, then use <b>Print</b>.</li>
         <li id="help1">Tap <b>Save</b> and choose <b>One combined file</b>. In the share sheet, choose <b>Save to Files</b>, then tap the .zip in Files to unpack a real <code>.zpl</code> file.</li>
         <li><b>USB drive:</b> save it to a flash drive connected to your iPhone, plug the drive into the ZT411, and go to <b>Storage → Print from USB</b> on the touchscreen.</li>
         <li><b>Computer:</b> Zebra Setup Utilities → <b>Open Communication with Printer → Send File</b>. On a Mac: <code>lpr -P &lt;printer&gt; -o raw labels.zpl</code></li>
@@ -162,6 +163,7 @@
 <div class="bar"><div class="inner">
   <button class="big sec" id="copyBtn" disabled>Copy</button>
   <button class="big" id="saveBtn" disabled>Save</button>
+  <button class="big" id="printBtn" disabled hidden>Print</button>
 </div></div>
 
 <!-- Save sheet -->
@@ -213,6 +215,12 @@
     <input type="range" id="thr" min="60" max="240" value="160"></div>
   <div class="row"><label for="ocr">Read names &amp; tracking<small>Text recognition, runs on your phone</small></label>
     <span class="switch"><input type="checkbox" id="ocr" checked><i></i></span></div>
+  <div id="printerRows">
+  <div class="row"><label for="pip">Printer IP address<small>On the ZT411: Menu → Connection → Wired / WLAN → IP Address</small></label>
+    <input type="text" id="pip" inputmode="decimal" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="192.168.1.50"
+      style="font:inherit;font-size:16px;color:var(--ink);background:var(--chip);border:0;border-radius:10px;padding:8px 10px;width:150px"></div>
+  <button class="opt" id="testPrint" style="justify-content:center;margin-top:6px"><b>Send a test label</b></button>
+  </div>
   <button class="big" id="closeSettings" style="width:100%;margin-top:12px">Done</button>
 </div></div>
 
@@ -253,7 +261,7 @@ function ensurePdf() {
 }
 
 // ---------------- settings ----------------
-const KEYS = ['size','cw','ch','dpi','crop','rotate','thr','ocr'];
+const KEYS = ['size','cw','ch','dpi','crop','rotate','thr','ocr','pip'];
 try {
   const saved = JSON.parse(localStorage.getItem('labelstudio') || '{}');
   KEYS.forEach(k => { if (k in saved) { const el = $(k); if (el.type === 'checkbox') el.checked = saved[k]; else el.value = saved[k]; } });
@@ -589,8 +597,9 @@ function draw() {
   $('clearAll').hidden = !items.length;
   const n = items.length, total = items.reduce((a, b) => a + b.copies, 0);
   $('countLbl').textContent = n ? n + (n === 1 ? ' label' : ' labels') + (total !== n ? ' · ' + total + ' prints' : '') : 'Labels';
-  $('saveBtn').disabled = $('copyBtn').disabled = !n;
-  $('saveBtn').textContent = n ? 'Save ' + n + (n === 1 ? ' label' : ' labels') : 'Save';
+  $('saveBtn').disabled = $('copyBtn').disabled = $('printBtn').disabled = !n;
+  if (IN_CLAUDE) $('saveBtn').textContent = n ? 'Save ' + n + (n === 1 ? ' label' : ' labels') : 'Save';
+  else $('printBtn').textContent = n ? 'Print ' + n : 'Print';
   if (!n) { list.innerHTML = '<div class="empty">No labels yet. Add your shipping-label PDFs above.<br>Names and tracking numbers are read automatically.</div>'; $('summary').textContent = ''; return; }
   const trkCount = {};
   items.forEach(it => { if (it.tracking) trkCount[it.tracking] = (trkCount[it.tracking] || 0) + 1; });
@@ -748,8 +757,35 @@ function separateFiles() {
     return { name: base + '.zpl', data: toZPL(it.L, it.copies) };
   });
 }
+// ---------------- direct print (website only) ----------------
+// Zebra printers accept raw ZPL posted to http://<printer>/pstprnt. A page can't fetch() a plain-http address from
+// an https site, but it can submit a form to it, so we post the ZPL in a new tab.
+function printerAddr() {
+  const v = ($('pip').value || '').trim().replace(/^https?:\/\//i, '').replace(/\/.*$/, '');
+  return /^[\w.\-]+(:\d+)?$/.test(v) ? v : '';
+}
+function sendToPrinter(zpl) {
+  const addr = printerAddr();
+  if (!addr) { openSheet('setSheet'); setTimeout(() => $('pip').focus(), 300); toast('Add your printer\'s IP address first', true); return false; }
+  const f = document.createElement('form');
+  f.method = 'POST'; f.action = 'http://' + addr + '/pstprnt'; f.enctype = 'text/plain'; f.target = '_blank';
+  const t = document.createElement('textarea'); t.name = 'z'; t.value = '\n' + zpl; // text/plain sends "z=" first; the printer ignores anything before ^XA
+  f.appendChild(t); f.style.display = 'none'; document.body.appendChild(f); f.submit(); f.remove();
+  return true;
+}
+const TEST_ZPL = () => { const o = getOpts(); return '^XA^PW' + o.W + '^LL' + o.H + '^CI28^FO40,60^A0N,' + Math.round(o.dpi / 5) + ',' + Math.round(o.dpi / 5) +
+  '^FDLabel Studio^FS^FO40,' + (60 + Math.round(o.dpi / 4)) + '^A0N,' + Math.round(o.dpi / 10) + ',' + Math.round(o.dpi / 10) + '^FDTest print OK  ' + o.wi + 'x' + o.hi + ' in, ' + o.dpi + ' dpi^FS^PQ1^XZ\n'; };
+$('printBtn').addEventListener('click', () => {
+  if (!items.length) return;
+  if (sendToPrinter(combinedZPL())) toast('Sent ' + items.length + (items.length === 1 ? ' label' : ' labels') + ' to the printer. Close the new tab to come back.');
+});
+$('testPrint').addEventListener('click', () => { if (sendToPrinter(TEST_ZPL())) toast('Test label sent'); });
+$('pip').addEventListener('change', persist);
+
 // wording for the save sheet and help, per home
+if (IN_CLAUDE) $('printerRows').style.display = 'none';
 if (!IN_CLAUDE) {
+  $('printBtn').hidden = false; $('saveBtn').classList.add('sec'); $('helpPrint').style.display = '';
   $('saveHint').innerHTML = IS_TOUCH ? 'Saves real <b>.zpl</b> files. On iPhone, choose <b>Save to Files</b>.' : 'Downloads real <b>.zpl</b> files.';
   $('optTxt').style.display = 'none';
   $('combDesc').textContent = 'Every label in one .zpl file, printed back to back';
